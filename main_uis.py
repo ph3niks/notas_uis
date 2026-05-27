@@ -298,7 +298,38 @@ if dict_cursos:
                 <div style="height:1px"></div>
             """, height=80)
 
-        st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
+        #estado de notas actual
+        # Reemplaza la línea 286 por esto:
+        segundo_corte_cerrado = celda_tiene_valor(row, "P4") and p4 > 0
+        
+        if segundo_corte_cerrado:
+            if total >= 3.0:
+                color_final = "#00FF41"
+                mensaje_final = "🎉 ¡Felicitaciones! Aprobaste la materia."
+            else:
+                color_final = "#FF3131"
+                mensaje_final = "😔 Lo siento, no pasaste. Debes habilitar la materia."
+        
+            st.markdown(f"""
+                <div style="margin:20px 0; padding:24px; background-color:#161B22;
+                            border:2px solid {color_final}; border-radius:16px; text-align:center;
+                            box-shadow:0 0 20px {color_final}44;">
+                    <div style="color:#8b949e; font-size:0.95rem; font-weight:bold;
+                                text-transform:uppercase; margin-bottom:6px;">
+                        NOTA DEFINITIVA FINAL
+                    </div>
+                    <div style="color:{color_final}; font-size:3.5rem; font-weight:bold; line-height:1.1;">
+                        {total:.2f}
+                        <span style="color:#8b949e; font-size:1.2rem;"> / 5.0</span>
+                    </div>
+                    <div style="color:{color_final}; font-size:1.2rem; font-weight:bold; margin-top:10px;">
+                        {mensaje_final}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
+        #st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
         st.divider()
 
         # ── PESTAÑAS ──────────────────────────────────────────────────────────
