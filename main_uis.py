@@ -262,23 +262,38 @@ if dict_cursos:
 
         # Confeti
         if total >= 3.0:
-            components.html("""
-                <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+            import time
+            components.html(f"""
+                <!-- cache-bust: {time.time()} -->
                 <script>
-                    window.onload = function() {
-                        var s = parent.document.createElement('script');
-                        s.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js';
-                        s.onload = function() {
-                            var c = parent.confetti;
-                            c({ particleCount:250, spread:160, origin:{x:0.5,y:0.4},
-                                colors:['#00FF41','#00F2FF','#FFD700','#FF69B4','#ffffff'] });
-                            setTimeout(()=>c({ particleCount:120, angle:60, spread:70,
-                                origin:{x:0,y:0.6}, colors:['#00FF41','#00F2FF','#FFD700'] }), 300);
-                            setTimeout(()=>c({ particleCount:120, angle:120, spread:70,
-                                origin:{x:1,y:0.6}, colors:['#00FF41','#00F2FF','#FFD700'] }), 600);
-                        };
-                        parent.document.head.appendChild(s);
-                    }
+                    (function() {{
+                        var script = parent.document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js';
+                        script.onload = function() {{
+                            var myConfetti = parent.confetti;
+                            myConfetti({{
+                                particleCount: 250,
+                                spread: 160,
+                                origin: {{ x: 0.5, y: 0.4 }},
+                                colors: ['#00FF41', '#00F2FF', '#FFD700', '#FF69B4', '#ffffff']
+                            }});
+                            setTimeout(() => myConfetti({{
+                                particleCount: 120,
+                                angle: 60,
+                                spread: 70,
+                                origin: {{ x: 0, y: 0.6 }},
+                                colors: ['#00FF41', '#00F2FF', '#FFD700']
+                            }}), 300);
+                            setTimeout(() => myConfetti({{
+                                particleCount: 120,
+                                angle: 120,
+                                spread: 70,
+                                origin: {{ x: 1, y: 0.6 }},
+                                colors: ['#00FF41', '#00F2FF', '#FFD700']
+                            }}), 600);
+                        }};
+                        parent.document.head.appendChild(script);
+                    }})();
                 </script>
                 <div style="height:1px"></div>
             """, height=80)
