@@ -471,7 +471,7 @@ if dict_cursos:
           and celda_tiene_valor(row, col)
       ]
       if ma_cols:
-        st.markdown("#### 📚 Módulos (Ma)")
+        st.markdown("#### 📚 Módulos ALEKS (Ma)")
         cols_ma = st.columns(min(len(ma_cols), 8))
         for i, col_name in enumerate(ma_cols):
           with cols_ma[i % 8]:
