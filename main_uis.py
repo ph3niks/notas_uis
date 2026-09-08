@@ -239,7 +239,7 @@ if dict_cursos:
     grupo_sel = st.selectbox(
         "Seleccione su Grupo",
         list(dict_cursos.keys()),
-        format_func=lambda g: f"{g} — {MAPA_CURSOS.get(g, g)}",
+        format_func=lambda g: f"{g}",# — {MAPA_CURSOS.get(g, g)}",
     )
   with col_input2:
     cod_estudiante = st.text_input(
