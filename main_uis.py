@@ -1,29 +1,65 @@
-import streamlit as st
-import pandas as pd
-import streamlit.components.v1 as components
-from datetime import datetime
 import os
+from datetime import datetime
+import pandas as pd
+import streamlit as st
+import streamlit.components.v1 as components
 
 # 1. CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="UIS | Portal de Notas", layout="wide")
 
-# 2. DICCIONARIO DE MATERIAS Y PESOS POR GRUPO
+# 2. DICCIONARIO DE MATERIAS Y PESOS RESTRUCTURADOS POR CURSO
 MAPA_CURSOS = {
-    "E1":  "Cálculo II",
+    "E1": "Cálculo II",
     "PE9": "Cálculo I",
     "PF1": "Álgebra Lineal",
     "PF3": "Álgebra Lineal",
 }
 
 PESOS = {
-    "E1":  {"P1": 0.20, "P2": 0.20, "P3": 0.25, "P4": 0.20, "PQT": 0.15},
-    "PE9": {"P1": 0.20, "P2": 0.20, "P3": 0.25, "P4": 0.20, "PQT": 0.15},
-    "PF1": {"P1": 0.15, "P2": 0.25, "P3": 0.20, "P4": 0.20, "PQT": 0.20},
-    "PF3": {"P1": 0.15, "P2": 0.25, "P3": 0.20, "P4": 0.20, "PQT": 0.20},
+    # Álgebras (PF1, PF3): P1 (15%), P2 (25%), P3 (20%), P4 (20%), PQT (10%), TUTOR (10%)
+    "PF1": {
+        "P1": 0.15,
+        "P2": 0.25,
+        "P3": 0.20,
+        "P4": 0.20,
+        "PQT": 0.10,
+        "ALEKS": 0.00,
+        "TUTOR": 0.10,
+    },
+    "PF3": {
+        "P1": 0.15,
+        "P2": 0.25,
+        "P3": 0.20,
+        "P4": 0.20,
+        "PQT": 0.10,
+        "ALEKS": 0.00,
+        "TUTOR": 0.10,
+    },
+    # Cálculo I (PE9): P1 (15%), P2 (20%), P3 (25%), P4 (20%), PQT (5%), ALEKS (10%), TUTOR (10%)
+    "PE9": {
+        "P1": 0.15,
+        "P2": 0.20,
+        "P3": 0.25,
+        "P4": 0.20,
+        "PQT": 0.05,
+        "ALEKS": 0.10,
+        "TUTOR": 0.10,
+    },
+    # Cálculo II (E1): P1 (20%), P2 (20%), P3 (25%), P4 (20%), PQT (5%), ALEKS (10%)
+    "E1": {
+        "P1": 0.20,
+        "P2": 0.20,
+        "P3": 0.25,
+        "P4": 0.20,
+        "PQT": 0.05,
+        "ALEKS": 0.10,
+        "TUTOR": 0.00,
+    },
 }
 
 # 3. ESTILO CSS
-st.markdown("""
+st.markdown(
+    """
     <style>
     .main { background-color: #0E1117; color: #FFFFFF; }
     .user-welcome {
@@ -86,64 +122,94 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #00D1DB; color: #000; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 
 @st.cache_data(ttl=60)
 def load_data():
-    file_path = "app_notas_uis.xlsx"
+  file_path = "app_notas_uis.xlsx"
+  try:
+    xls = pd.ExcelFile(file_path, engine="openpyxl")
+    data = {}
+    mod_time = "No disponible"
     try:
-        xls = pd.ExcelFile(file_path, engine='openpyxl')
-        data = {}
-        mod_time = "No disponible"
-        try:
-            ts = os.path.getmtime(file_path)
-            mod_time = datetime.fromtimestamp(ts).strftime("%-d de %B de %Y, %I:%M %p")
-        except Exception:
-            pass
+      ts = os.path.getmtime(file_path)
+      mod_time = datetime.fromtimestamp(ts).strftime(
+          "%-d de %B de %Y, %I:%M %p"
+      )
+    except Exception:
+      pass
 
-        for sheet in xls.sheet_names:
-            df = xls.parse(sheet)
-            df.columns = [str(c).strip().upper() for c in df.columns]
+    for sheet in xls.sheet_names:
+      df = xls.parse(sheet)
+      df.columns = [str(c).strip().upper() for c in df.columns]
 
-            # Normalizar columna de nombre
-            for col in df.columns:
-                if col.startswith("ESTUDIANTE"):
-                    df = df.rename(columns={col: "NOMBRE"})
-                    break
+      for col in df.columns:
+        if col.startswith("ESTUDIANTE"):
+          df = df.rename(columns={col: "NOMBRE"})
+          break
 
-            # Normalizar columna COD
-            if "COD" in df.columns:
-                df["COD"] = df["COD"].astype(str).str.strip().str.split(".").str[0]
+      if "COD" in df.columns:
+        df["COD"] = df["COD"].astype(str).str.strip().str.split(".").str[0]
 
-            # Convertir a numérico SIN rellenar NaN — así distinguimos vacío de cero
-            for col in df.columns:
-                if col not in ["NOMBRE", "COD", "NO"]:
-                    df[col] = pd.to_numeric(df[col], errors="coerce")
+      for col in df.columns:
+        if col not in ["NOMBRE", "COD", "NO"]:
+          df[col] = pd.to_numeric(df[col], errors="coerce")
 
-            data[sheet] = df
-        return data, mod_time
-    except Exception as e:
-        st.error(f"Error cargando archivo: {e}")
-        return None, None
+      data[sheet] = df
+    return data, mod_time
+  except Exception as e:
+    st.error(f"Error cargando archivo: {e}")
+    return None, None
 
 
 def round_nota(val):
-    """Convierte a float redondeado; devuelve 0.0 para NaN/None."""
-    if val is None or (isinstance(val, float) and pd.isna(val)):
-        return 0.0
-    return float(round(float(val) + 0.0000001, 1))
+  if val is None or (isinstance(val, float) and pd.isna(val)):
+    return 0.0
+  return float(round(float(val) + 0.0000001, 1))
 
 
 def celda_tiene_valor(row, col):
-    """True si la celda existe y NO es NaN (incluye el caso valor = 0.0)."""
-    val = row.get(col, None)
-    if val is None:
-        return False
-    try:
-        return not pd.isna(val)
-    except Exception:
-        return False
+  val = row.get(col, None)
+  if val is None:
+    return False
+  try:
+    return not pd.isna(val)
+  except Exception:
+    return False
+
+
+def obtener_pqt(row, todas_cols):
+  """Obtiene el PQT de Excel o lo calcula desde Quices (Q), Trabajos (Tr) y Talleres (Ta)."""
+  if celda_tiene_valor(row, "PQT"):
+    return round_nota(row.get("PQT"))
+
+  q_tr_ta_vals = []
+  for col in todas_cols:
+    c_upper = col.upper()
+    is_q_tr_ta = (
+        c_upper.startswith("Q")
+        or c_upper.startswith("TR")
+        or c_upper.startswith("TA")
+    )
+    if is_q_tr_ta and c_upper not in ["PQT", "QT"]:
+      if celda_tiene_valor(row, col):
+        q_tr_ta_vals.append(round_nota(row.get(col)))
+
+  if q_tr_ta_vals:
+    return float(round(sum(q_tr_ta_vals) / len(q_tr_ta_vals) + 0.0000001, 1))
+  return 0.0
+
+
+def obtener_columna_alternativa(row, nombres_posibles):
+  """Busca coincidencias flexibles de nombres de columna (p. ej., ALEKS o TUTOR)."""
+  for nombre in nombres_posibles:
+    for key in row.keys():
+      if nombre in str(key).upper() and celda_tiene_valor(row, key):
+        return round_nota(row.get(key))
+  return 0.0
 
 
 # --- CARGA ---
@@ -152,98 +218,127 @@ dict_cursos, ultima_actualizacion = load_data()
 # --- CABECERA PRINCIPAL ---
 col_titulo, col_fecha = st.columns([3, 1])
 with col_titulo:
-    st.title("🎓 Portal de Notas — UIS")
+  st.title("🎓 Portal de Notas — UIS")
 with col_fecha:
-    st.markdown(f"""
+  st.markdown(
+      f"""
         <div style="margin-top:18px; text-align:right;">
             <span class="update-badge">🕒 Actualizado: {ultima_actualizacion}</span>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
 if st.button("🔄 Actualizar datos"):
-    st.cache_data.clear()
-    st.rerun()
+  st.cache_data.clear()
+  st.rerun()
 
 if dict_cursos:
-    col_input1, col_input2 = st.columns([1, 1])
-    with col_input1:
-        grupo_sel = st.selectbox(
-            "Seleccione su Grupo", list(dict_cursos.keys()),
-            format_func=lambda g: f"{g} — {MAPA_CURSOS.get(g, g)}")
-    with col_input2:
-        cod_estudiante = st.text_input(
-            "Ingrese su Código de Estudiante", placeholder="Ej: 22...").strip()
+  col_input1, col_input2 = st.columns([1, 1])
+  with col_input1:
+    grupo_sel = st.selectbox(
+        "Seleccione su Grupo",
+        list(dict_cursos.keys()),
+        format_func=lambda g: f"{g} — {MAPA_CURSOS.get(g, g)}",
+    )
+  with col_input2:
+    cod_estudiante = st.text_input(
+        "Ingrese su Código de Estudiante", placeholder="Ej: 22..."
+    ).strip()
 
-    consultar = st.button("Consultar mis Notas")
+  consultar = st.button("Consultar mis Notas")
 
-    # ── Guardar en session_state al consultar ──────────────────────────────────
-    if cod_estudiante and consultar:
-        df_actual = dict_cursos[grupo_sel]
-        if "COD" in df_actual.columns:
-            est = df_actual[df_actual["COD"] == cod_estudiante]
-            if not est.empty:
-                st.session_state["resultado"] = {
-                    "row": est.iloc[0].to_dict(),
-                    "todas_cols": list(df_actual.columns),
-                    "grupo": grupo_sel,
-                }
-                st.session_state["error"] = None
-            else:
-                st.session_state["resultado"] = None
-                st.session_state["error"] = "not_found"
-        else:
-            st.session_state["resultado"] = None
-            st.session_state["error"] = "no_col"
+  if cod_estudiante and consultar:
+    df_actual = dict_cursos[grupo_sel]
+    if "COD" in df_actual.columns:
+      est = df_actual[df_actual["COD"] == cod_estudiante]
+      if not est.empty:
+        st.session_state["resultado"] = {
+            "row": est.iloc[0].to_dict(),
+            "todas_cols": list(df_actual.columns),
+            "grupo": grupo_sel,
+        }
+        st.session_state["error"] = None
+      else:
+        st.session_state["resultado"] = None
+        st.session_state["error"] = "not_found"
+    else:
+      st.session_state["resultado"] = None
+      st.session_state["error"] = "no_col"
 
-    # ── Mensajes de error ──────────────────────────────────────────────────────
-    err = st.session_state.get("error")
-    if err == "not_found":
-        st.warning("Código no encontrado en este grupo. Verifica el grupo y tu código.")
-    elif err == "no_col":
-        st.error("Error: Columna COD no detectada en la hoja.")
+  err = st.session_state.get("error")
+  if err == "not_found":
+    st.warning(
+        "Código no encontrado en este grupo. Verifica el grupo y tu código."
+    )
+  elif err == "no_col":
+    st.error("Error: Columna COD no detectada en la hoja.")
 
-    # ── Mostrar resultados (persisten aunque se muevan los sliders) ────────────
-    res = st.session_state.get("resultado")
-    if res:
-        row        = res["row"]
-        todas_cols = res["todas_cols"]
-        grupo_res  = res["grupo"]
-        pesos      = PESOS[grupo_res]
+  res = st.session_state.get("resultado")
+  if res:
+    row = res["row"]
+    todas_cols = res["todas_cols"]
+    grupo_res = res["grupo"]
+    pesos = PESOS.get(
+        grupo_res,
+        {
+            "P1": 0.20,
+            "P2": 0.20,
+            "P3": 0.20,
+            "P4": 0.20,
+            "PQT": 0.20,
+            "ALEKS": 0.0,
+            "TUTOR": 0.0,
+        },
+    )
 
-        # Cabecera estudiante
-        nombre = row.get("NOMBRE", "Estudiante")
-        st.markdown(f'<p class="user-welcome">Bienvenid@, {nombre}</p>', unsafe_allow_html=True)
-        st.write(f"📖 **{MAPA_CURSOS.get(grupo_res, grupo_res)}** | Grupo: {grupo_res}")
+    nombre = row.get("NOMBRE", "Estudiante")
+    st.markdown(
+        f'<p class="user-welcome">Bienvenid@, {nombre}</p>',
+        unsafe_allow_html=True,
+    )
+    st.write(
+        f"📖 **{MAPA_CURSOS.get(grupo_res, grupo_res)}** | Grupo: {grupo_res}"
+    )
 
-        # Notas
-        p1  = round_nota(row.get("P1"))
-        p2  = round_nota(row.get("P2"))
-        p3  = round_nota(row.get("P3"))
-        p4  = round_nota(row.get("P4"))
-        pqt = round_nota(row.get("PQT"))
+    # Extraer componentes
+    p1 = round_nota(row.get("P1"))
+    p2 = round_nota(row.get("P2"))
+    p3 = round_nota(row.get("P3"))
+    p4 = round_nota(row.get("P4"))
+    pqt = obtener_pqt(row, todas_cols)
+    aleks = obtener_columna_alternativa(row, ["ALEKS"])
+    tutor = obtener_columna_alternativa(row, ["TUTOR", "TUTO", "TUTORIA"])
 
-        total = round(
-            p1  * pesos["P1"] +
-            p2  * pesos["P2"] +
-            p3  * pesos["P3"] +
-            p4  * pesos["P4"] +
-            pqt * pesos["PQT"] + 0.0000001, 2)
+    # Nota total calculada dinámicamente con ponderación oficial
+    total = round(
+        p1 * pesos["P1"]
+        + p2 * pesos["P2"]
+        + p3 * pesos["P3"]
+        + p4 * pesos["P4"]
+        + pqt * pesos["PQT"]
+        + aleks * pesos.get("ALEKS", 0.0)
+        + tutor * pesos.get("TUTOR", 0.0)
+        + 0.0000001,
+        2,
+    )
 
-        # Semáforo
-        if total >= 3.0:
-            color_b    = "#00FF41"
-            status_txt = "¡FELICITACIONES, HAS APROBADO LA MATERIA! 🎉"
-        elif total >= 2.5:
-            color_b    = "#F7B707"
-            status_txt = "ADVERTENCIA ⚠️: No bajes la guardia, estás cerca"
-        elif total >= 1.8:
-            color_b    = "#FF3131"
-            status_txt = "RIESGO ALTO 🚨: Necesitas esforzarte al máximo"
-        else:
-            color_b    = "#FF3131"
-            status_txt = "SITUACIÓN CRÍTICA 😵: Habla con tu profesor"
+    # Semáforo
+    if total >= 3.0:
+      color_b = "#00FF41"
+      status_txt = "¡FELICITACIONES, HAS APROBADO LA MATERIA! 🎉"
+    elif total >= 2.5:
+      color_b = "#F7B707"
+      status_txt = "ADVERTENCIA ⚠️: No bajes la guardia, estás cerca"
+    elif total >= 1.8:
+      color_b = "#FF3131"
+      status_txt = "RIESGO ALTO 🚨: Necesitas esforzarte al máximo"
+    else:
+      color_b = "#FF3131"
+      status_txt = "SITUACIÓN CRÍTICA 😵: Habla con tu profesor"
 
-        st.markdown(f"""
+    st.markdown(
+        f"""
             <div style="margin-bottom:5px; display:flex; justify-content:space-between; align-items:flex-end;">
                 <span style="color:{color_b}; font-weight:bold; font-size:1.1rem;">{status_txt}</span>
                 <span style="color:#8b949e; font-size:0.8rem; font-weight:bold;">Meta mínima: 3.0</span>
@@ -258,12 +353,15 @@ if dict_cursos:
                 <div style="position:absolute; left:60%; top:0; width:2px; height:100%;
                             background-color:rgba(255,255,255,0.4); z-index:2;"></div>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
-        # Confeti
-        if total >= 3.0:
-            import time
-            components.html(f"""
+    if total >= 3.0:
+      import time
+
+      components.html(
+          f"""
                 <!-- cache-bust: {time.time()} -->
                 <script>
                     (function() {{
@@ -296,21 +394,24 @@ if dict_cursos:
                     }})();
                 </script>
                 <div style="height:1px"></div>
-            """, height=80)
+            """,
+          height=80,
+      )
 
-        #estado de notas actual
-        # Reemplaza la línea 286 por esto:
-        segundo_corte_cerrado = celda_tiene_valor(row, "P4") and p4 > 0
-        
-        if segundo_corte_cerrado:
-            if total >= 3.0:
-                color_final = "#00FF41"
-                mensaje_final = "🎉 ¡Felicitaciones! Aprobaste la materia."
-            else:
-                color_final = "#FF3131"
-                mensaje_final = "😔 Lo siento, no pasaste. Debes habilitar la materia."
-        
-            st.markdown(f"""
+    segundo_corte_cerrado = celda_tiene_valor(row, "P4") and p4 > 0
+
+    if segundo_corte_cerrado:
+      if total >= 3.0:
+        color_final = "#00FF41"
+        mensaje_final = "🎉 ¡Felicitaciones! Aprobaste la materia."
+      else:
+        color_final = "#FF3131"
+        mensaje_final = (
+            "😔 Lo siento, no pasaste. Debes habilitar la materia."
+        )
+
+      st.markdown(
+          f"""
                 <div style="margin:20px 0; padding:24px; background-color:#161B22;
                             border:2px solid {color_final}; border-radius:16px; text-align:center;
                             box-shadow:0 0 20px {color_final}44;">
@@ -326,132 +427,262 @@ if dict_cursos:
                         {mensaje_final}
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
-        #st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
-        st.divider()
+            """,
+          unsafe_allow_html=True,
+      )
+    else:
+      st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
 
-        # ── PESTAÑAS ──────────────────────────────────────────────────────────
-        t1, t2, t3 = st.tabs(["📊 Detalle de Notas", "🎯 Aporte por Componente", "🔮 Simulador de Proyección"])
+    st.divider()
 
-        with t1:
-                tuto = round_nota(row.get("TUTO")) if celda_tiene_valor(row, "TUTO") else None
+    # --- PESTAÑAS DE DETALLE Y SIMULADOR ---
+    t1, t2, t3 = st.tabs([
+        "📊 Detalle de Notas",
+        "🎯 Aporte por Componente",
+        "🔮 Simulador de Proyección",
+    ])
 
-                # Porcentaje de tutorias según grupo
-                TUTO_PCT = {"PE9": 8, "PF1": 10, "PF3": 10}
-                tuto_pct = TUTO_PCT.get(grupo_res, 0)
-                mostrar_tuto = grupo_res in TUTO_PCT
+    with t1:
+      cards_principales = [
+          (f"Parcial 1 ({int(pesos['P1']*100)}%)", f"{p1:.1f}"),
+          (f"Parcial 2 ({int(pesos['P2']*100)}%)", f"{p2:.1f}"),
+          (f"Parcial 3 ({int(pesos['P3']*100)}%)", f"{p3:.1f}"),
+          (f"Parcial 4 ({int(pesos['P4']*100)}%)", f"{p4:.1f}"),
+          (f"Prom. PQT ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}"),
+      ]
+      if pesos.get("ALEKS", 0) > 0:
+        cards_principales.append(
+            (f"ALEKS ({int(pesos['ALEKS']*100)}%)", f"{aleks:.1f}")
+        )
+      if pesos.get("TUTOR", 0) > 0:
+        cards_principales.append(
+            (f"TUTOR ({int(pesos['TUTOR']*100)}%)", f"{tutor:.1f}")
+        )
 
-                tuto = round_nota(row.get("TUTO")) if mostrar_tuto else None
+      cols_cards = st.columns(len(cards_principales))
+      for idx, (label, val) in enumerate(cards_principales):
+        cols_cards[idx].metric(label, val)
 
-                num_cols = 6 if tuto is not None else 5
-                c = st.columns(num_cols)
-                c[0].metric(f"Parcial 1 ({int(pesos['P1']*100)}%)",       f"{p1:.1f}")
-                c[1].metric(f"Parcial 2 ({int(pesos['P2']*100)}%)",       f"{p2:.1f}")
-                c[2].metric(f"Parcial 3 ({int(pesos['P3']*100)}%)",       f"{p3:.1f}")
-                c[3].metric(f"Parcial 4 ({int(pesos['P4']*100)}%)",       f"{p4:.1f}")
-                c[4].metric(f"Prom. Talleres ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}")
-                if mostrar_tuto:
-                    c[5].metric(f"Tutorías ({tuto_pct}%)", f"{tuto:.1f}")
-
-                # Quices — mostrar si la celda tiene valor (incluyendo 0), omitir solo vacías
-                q_cols = [col for col in todas_cols
-                          if col.upper().startswith("Q")
-                          and col.upper() not in ("QT",)
-                          and celda_tiene_valor(row, col)]
-                if q_cols:
-                    st.markdown("#### 🧩 Quices")
-                    cols_q = st.columns(min(len(q_cols), 8))
-                    for i, col_name in enumerate(q_cols):
-                        with cols_q[i % 8]:
-                            st.markdown(f"""
+      # Módulos (Ma)
+      ma_cols = [
+          col
+          for col in todas_cols
+          if (col.upper().startswith("MA") or col.upper().startswith("MOD"))
+          and celda_tiene_valor(row, col)
+      ]
+      if ma_cols:
+        st.markdown("#### 📚 Módulos (Ma)")
+        cols_ma = st.columns(min(len(ma_cols), 8))
+        for i, col_name in enumerate(ma_cols):
+          with cols_ma[i % 8]:
+            st.markdown(
+                f"""
                                 <div class="taller-card">
                                     <span class="taller-label">{col_name}</span>
                                     <span class="taller-value">{round_nota(row.get(col_name)):.1f}</span>
-                                </div>""", unsafe_allow_html=True)
+                                </div>""",
+                unsafe_allow_html=True,
+            )
 
-                # Talleres
-                ta_cols = [col for col in todas_cols
-                           if col.upper().startswith("TA")
-                           and celda_tiene_valor(row, col)]
-                if ta_cols:
-                    st.markdown("#### 📝 Talleres")
-                    cols_ta = st.columns(min(len(ta_cols), 8))
-                    for i, col_name in enumerate(ta_cols):
-                        with cols_ta[i % 8]:
-                            st.markdown(f"""
+      # Quices
+      q_cols = [
+          col
+          for col in todas_cols
+          if col.upper().startswith("Q")
+          and col.upper() not in ("QT", "PQT")
+          and celda_tiene_valor(row, col)
+      ]
+      if q_cols:
+        st.markdown("#### 🧩 Quices")
+        cols_q = st.columns(min(len(q_cols), 8))
+        for i, col_name in enumerate(q_cols):
+          with cols_q[i % 8]:
+            st.markdown(
+                f"""
                                 <div class="taller-card">
-                                    <span class="taller-label">T{col_name[2:]}</span>
+                                    <span class="taller-label">{col_name}</span>
                                     <span class="taller-value">{round_nota(row.get(col_name)):.1f}</span>
-                                </div>""", unsafe_allow_html=True)
+                                </div>""",
+                unsafe_allow_html=True,
+            )
 
-                # Trabajos
-                tr_cols = [col for col in todas_cols
-                           if col.upper().startswith("TR")
-                           and celda_tiene_valor(row, col)]
-                if tr_cols:
-                    st.markdown("#### 📁 Trabajos")
-                    cols_tr = st.columns(min(len(tr_cols), 8))
-                    for i, col_name in enumerate(tr_cols):
-                        with cols_tr[i % 8]:
-                            st.markdown(f"""
+      # Talleres
+      ta_cols = [
+          col
+          for col in todas_cols
+          if col.upper().startswith("TA") and celda_tiene_valor(row, col)
+      ]
+      if ta_cols:
+        st.markdown("#### 📝 Talleres")
+        cols_ta = st.columns(min(len(ta_cols), 8))
+        for i, col_name in enumerate(ta_cols):
+          with cols_ta[i % 8]:
+            st.markdown(
+                f"""
                                 <div class="taller-card">
-                                    <span class="taller-label">Tr{col_name[2:]}</span>
+                                    <span class="taller-label">{col_name}</span>
                                     <span class="taller-value">{round_nota(row.get(col_name)):.1f}</span>
-                                </div>""", unsafe_allow_html=True)
+                                </div>""",
+                unsafe_allow_html=True,
+            )
 
-        with t2:
-            st.subheader("🎯 Aporte real de cada componente a la nota definitiva")
-            componentes = {
-                f"Parcial 1 ({int(pesos['P1']*100)}%)": p1  * pesos["P1"],
-                f"Parcial 2 ({int(pesos['P2']*100)}%)": p2  * pesos["P2"],
-                f"Parcial 3 ({int(pesos['P3']*100)}%)": p3  * pesos["P3"],
-                f"Parcial 4 ({int(pesos['P4']*100)}%)": p4  * pesos["P4"],
-                f"Talleres ({int(pesos['PQT']*100)}%)":  pqt * pesos["PQT"],
-            }
-            cols_d = st.columns(len(componentes))
-            for i, (label, aporte) in enumerate(componentes.items()):
-                cols_d[i].metric(label, f"{aporte:.3f}")
-            st.info(f"Suma de aportes = **{sum(componentes.values()):.2f}** (nota definitiva actual)")
+      # Trabajos
+      tr_cols = [
+          col
+          for col in todas_cols
+          if col.upper().startswith("TR") and celda_tiene_valor(row, col)
+      ]
+      if tr_cols:
+        st.markdown("#### 📁 Trabajos")
+        cols_tr = st.columns(min(len(tr_cols), 8))
+        for i, col_name in enumerate(tr_cols):
+          with cols_tr[i % 8]:
+            st.markdown(
+                f"""
+                                <div class="taller-card">
+                                    <span class="taller-label">{col_name}</span>
+                                    <span class="taller-value">{round_nota(row.get(col_name)):.1f}</span>
+                                </div>""",
+                unsafe_allow_html=True,
+            )
 
-        with t3:
-            st.subheader("🔮 ¿Qué necesito para aprobar?")
+    with t2:
+      st.subheader("🎯 Aporte real de cada componente a la nota definitiva")
+      componentes = {
+          f"Parcial 1 ({int(pesos['P1']*100)}%)": p1 * pesos["P1"],
+          f"Parcial 2 ({int(pesos['P2']*100)}%)": p2 * pesos["P2"],
+          f"Parcial 3 ({int(pesos['P3']*100)}%)": p3 * pesos["P3"],
+          f"Parcial 4 ({int(pesos['P4']*100)}%)": p4 * pesos["P4"],
+          f"PQT ({int(pesos['PQT']*100)}%)": pqt * pesos["PQT"],
+      }
+      if pesos.get("ALEKS", 0) > 0:
+        componentes[f"ALEKS ({int(pesos['ALEKS']*100)}%)"] = (
+            aleks * pesos["ALEKS"]
+        )
+      if pesos.get("TUTOR", 0) > 0:
+        componentes[f"TUTOR ({int(pesos['TUTOR']*100)}%)"] = (
+            tutor * pesos["TUTOR"]
+        )
 
-            acum_sin_p4  = p1*pesos["P1"] + p2*pesos["P2"] + p3*pesos["P3"] + pqt*pesos["PQT"]
-            p4_necesario = (3.0 - acum_sin_p4) / pesos["P4"]
+      cols_d = st.columns(len(componentes))
+      for i, (label, aporte) in enumerate(componentes.items()):
+        cols_d[i].metric(label, f"{aporte:.3f}")
+      st.info(
+          f"Suma de aportes = **{sum(componentes.values()):.2f}** (nota"
+          " definitiva actual)"
+      )
 
-            st.markdown("##### Con el promedio de talleres actual:")
-            if celda_tiene_valor(row, "P4") and p4 > 0:
-                st.info(f"Ya tienes P4 registrado: **{p4:.1f}**. Tu nota actual es **{total:.2f}**.")
-            elif p4_necesario <= 0:
-                st.success("¡Ya aprobaste sin necesitar P4! 🎉")
-            elif p4_necesario > 5.0:
-                st.error(f"Con el PQT actual ({pqt:.1f}), necesitarías **{p4_necesario:.2f}** en P4, superando el máximo de 5.0.")
-                st.warning("Necesitas mejorar el promedio de talleres. Mira la simulación abajo 👇")
-            else:
-                st.warning(f"Necesitas mínimo **{p4_necesario:.2f} / 5.0** en P4 para aprobar (con PQT = {pqt:.1f}).")
+    with t3:
+      st.subheader("🔮 ¿Qué necesito para aprobar?")
 
-            st.divider()
-            st.markdown("##### 🎛️ Simula tus escenarios")
+      acum_fijo_sin_p4 = (
+          p1 * pesos["P1"]
+          + p2 * pesos["P2"]
+          + p3 * pesos["P3"]
+          + pqt * pesos["PQT"]
+          + aleks * pesos.get("ALEKS", 0.0)
+          + tutor * pesos.get("TUTOR", 0.0)
+      )
+      p4_necesario = (3.0 - acum_fijo_sin_p4) / pesos["P4"]
 
-            col_s1, col_s2 = st.columns(2)
-            with col_s1:
-                p4_sim = st.slider(
-                    "Nota esperada en P4", 0.0, 5.0,
-                    value=float(p4) if (celda_tiene_valor(row, "P4") and p4 > 0) else 3.0,
-                    step=0.1, key="slider_p4")
-            with col_s2:
-                pqt_sim = st.slider(
-                    "Promedio de talleres proyectado+(TUTORIA si aplica) (PQT)", 0.0, 5.0,
-                    value=float(pqt), step=0.1, key="slider_pqt")
+      st.markdown("##### Estado actual con componentes registrados:")
+      if celda_tiene_valor(row, "P4") and p4 > 0:
+        st.info(
+            f"Ya tienes P4 registrado: **{p4:.1f}**. Tu nota final es"
+            f" **{total:.2f}**."
+        )
+      elif p4_necesario <= 0:
+        st.success("¡Ya aprobaste sin necesitar P4! 🎉")
+      elif p4_necesario > 5.0:
+        st.error(
+            f"Con el acumulado actual, necesitarías **{p4_necesario:.2f}** en"
+            " P4 para llegar a 3.0."
+        )
+        st.warning("Usa los controles de abajo para simular mejores notas. 👇")
+      else:
+        st.warning(
+            f"Necesitas mínimo **{p4_necesario:.2f} / 5.0** en P4 para"
+            " aprobar."
+        )
 
-            total_sim = round(
-                p1*pesos["P1"] + p2*pesos["P2"] + p3*pesos["P3"] +
-                p4_sim*pesos["P4"] + pqt_sim*pesos["PQT"] + 0.0000001, 2)
+      st.divider()
+      st.markdown("##### 🎛️ Simula tus escenarios")
 
-            color_sim = "#00FF41" if total_sim >= 3.0 else ("#F7B707" if total_sim >= 2.5 else "#FF3131")
-            st.markdown(f"""
+      num_sim_cols = (
+          2
+          + (1 if pesos.get("ALEKS", 0) > 0 else 0)
+          + (1 if pesos.get("TUTOR", 0) > 0 else 0)
+      )
+      cols_sim = st.columns(num_sim_cols)
+
+      with cols_sim[0]:
+        p4_sim = st.slider(
+            "Nota esperada P4",
+            0.0,
+            5.0,
+            value=float(p4)
+            if (celda_tiene_valor(row, "P4") and p4 > 0)
+            else 3.0,
+            step=0.1,
+            key="slider_p4",
+        )
+      with cols_sim[1]:
+        pqt_sim = st.slider(
+            "Promedio PQT proyectado",
+            0.0,
+            5.0,
+            value=float(pqt),
+            step=0.1,
+            key="slider_pqt",
+        )
+
+      curr_col = 2
+      if pesos.get("ALEKS", 0) > 0:
+        with cols_sim[curr_col]:
+          aleks_sim = st.slider(
+              "Nota ALEKS proyectada",
+              0.0,
+              5.0,
+              value=float(aleks),
+              step=0.1,
+              key="slider_aleks",
+          )
+        curr_col += 1
+      else:
+        aleks_sim = 0.0
+
+      if pesos.get("TUTOR", 0) > 0:
+        with cols_sim[curr_col]:
+          tutor_sim = st.slider(
+              "Nota TUTOR proyectada",
+              0.0,
+              5.0,
+              value=float(tutor),
+              step=0.1,
+              key="slider_tutor",
+          )
+      else:
+        tutor_sim = 0.0
+
+      total_sim = round(
+          p1 * pesos["P1"]
+          + p2 * pesos["P2"]
+          + p3 * pesos["P3"]
+          + p4_sim * pesos["P4"]
+          + pqt_sim * pesos["PQT"]
+          + aleks_sim * pesos.get("ALEKS", 0.0)
+          + tutor_sim * pesos.get("TUTOR", 0.0)
+          + 0.0000001,
+          2,
+      )
+
+      color_sim = (
+          "#00FF41"
+          if total_sim >= 3.0
+          else ("#F7B707" if total_sim >= 2.5 else "#FF3131")
+      )
+      st.markdown(
+          f"""
                 <div style="margin-top:10px; padding:16px; background-color:#161B22;
                             border-radius:12px; border:1px solid #30363D; text-align:center;">
                     <span style="color:#8b949e; font-size:0.9rem;">Nota definitiva proyectada</span><br>
@@ -461,13 +692,6 @@ if dict_cursos:
                         {"✅ APRUEBA" if total_sim >= 3.0 else "❌ NO APRUEBA"}
                     </span>
                 </div>
-            """, unsafe_allow_html=True)
-
-            p4_min_sim = (3.0 - (p1*pesos["P1"] + p2*pesos["P2"] +
-                                  p3*pesos["P3"] + pqt_sim*pesos["PQT"])) / pesos["P4"]
-            if p4_min_sim <= 0:
-                st.success(f"Con PQT = {pqt_sim:.1f}, ya apruebas sin importar P4. 🎉")
-            elif p4_min_sim > 5.0:
-                st.error(f"Con PQT = {pqt_sim:.1f}, no es posible aprobar ni con 5.0 en P4.")
-            else:
-                st.info(f"Con PQT = {pqt_sim:.1f}, necesitas mínimo **{p4_min_sim:.2f}** en P4 para aprobar.")
+            """,
+          unsafe_allow_html=True,
+      )
