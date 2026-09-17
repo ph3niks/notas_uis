@@ -10,7 +10,7 @@ st.set_page_config(page_title="UIS | Portal de Notas", layout="wide")
 # 2. DICCIONARIO DE MATERIAS Y PESOS RESTRUCTURADOS POR CURSO
 MAPA_CURSOS = {
     "E1": "Cálculo II",
-    "PE9": "Cálculo I",
+    "PED": "Cálculo I",
     "PF1": "Álgebra Lineal",
     "PF3": "Álgebra Lineal",
 }
