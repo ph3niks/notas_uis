@@ -448,7 +448,7 @@ if dict_cursos:
           (f"Parcial 2 ({int(pesos['P2']*100)}%)", f"{p2:.1f}"),
           (f"Parcial 3 ({int(pesos['P3']*100)}%)", f"{p3:.1f}"),
           (f"Parcial 4 ({int(pesos['P4']*100)}%)", f"{p4:.1f}"),
-          *(f"Prom. PQT ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}") if pesos.get("PQT", 0) > 0 else []) ,
+          *( [(f"Prom. PQT ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}")] if pesos.get("PQT", 0) > 0 else [] ) ,
       ]
       if pesos.get("ALEKS", 0) > 0:
         cards_principales.append(
