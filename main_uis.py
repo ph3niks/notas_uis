@@ -639,7 +639,7 @@ if dict_cursos:
       else:
         pqt_sim = 0.0
 
-      curr_col = 2
+      curr_col = 1 + (1 if pesos.get("PQT", 0) > 0 else 0)
       if pesos.get("ALEKS", 0) > 0:
         with cols_sim[curr_col]:
           aleks_sim = st.slider(
