@@ -41,7 +41,7 @@ PESOS = {
         "P2": 0.15,
         "P3": 0.25,
         "P4": 0.20,
-        #"PQT": 0.00,
+        "PQT": 0.00,
         "ALEKS": 0.10,
         "TUTOR": 0.10,
     },
@@ -448,7 +448,7 @@ if dict_cursos:
           (f"Parcial 2 ({int(pesos['P2']*100)}%)", f"{p2:.1f}"),
           (f"Parcial 3 ({int(pesos['P3']*100)}%)", f"{p3:.1f}"),
           (f"Parcial 4 ({int(pesos['P4']*100)}%)", f"{p4:.1f}"),
-          (f"Prom. PQT ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}"),
+          *(f"Prom. PQT ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}") if pesos.get("PQT", 0) > 0 else []) ,
       ]
       if pesos.get("ALEKS", 0) > 0:
         cards_principales.append(
@@ -553,7 +553,7 @@ if dict_cursos:
           f"Parcial 2 ({int(pesos['P2']*100)}%)": p2 * pesos["P2"],
           f"Parcial 3 ({int(pesos['P3']*100)}%)": p3 * pesos["P3"],
           f"Parcial 4 ({int(pesos['P4']*100)}%)": p4 * pesos["P4"],
-          f"PQT ({int(pesos['PQT']*100)}%)": pqt * pesos["PQT"],
+          **( {f"PQT ({int(pesos['PQT']*100)}%)": pqt * pesos["PQT"]} if pesos.get("PQT", 0) > 0 else {} ),
       }
       if pesos.get("ALEKS", 0) > 0:
         componentes[f"ALEKS ({int(pesos['ALEKS']*100)}%)"] = (
@@ -609,9 +609,10 @@ if dict_cursos:
       st.markdown("##### 🎛️ Simula tus escenarios")
 
       num_sim_cols = (
-          2
-          + (1 if pesos.get("ALEKS", 0) > 0 else 0)
-          + (1 if pesos.get("TUTOR", 0) > 0 else 0)
+          1                                                          # P4 siempre
+          + (1 if pesos.get("PQT",   0) > 0 else 0)                # PQT opcional
+          + (1 if pesos.get("ALEKS", 0) > 0 else 0)                # ALEKS opcional
+          + (1 if pesos.get("TUTOR", 0) > 0 else 0)                # TUTOR opcional
       )
       cols_sim = st.columns(num_sim_cols)
 
@@ -626,15 +627,17 @@ if dict_cursos:
             step=0.1,
             key="slider_p4",
         )
-      with cols_sim[1]:
-        pqt_sim = st.slider(
-            "Promedio PQT proyectado",
-            0.0,
-            5.0,
-            value=float(pqt),
-            step=0.1,
-            key="slider_pqt",
-        )
+      if pesos.get("PQT", 0) > 0:
+        with cols_sim[1]:
+          pqt_sim = st.slider(
+              "Promedio PQT proyectado",
+              0.0, 5.0,
+              value=float(pqt),
+              step=0.1,
+              key="slider_pqt",
+          )
+      else:
+        pqt_sim = 0.0
 
       curr_col = 2
       if pesos.get("ALEKS", 0) > 0:
