@@ -377,7 +377,7 @@ if dict_cursos:
             </p>
             <p style="color:{color_b}; font-size:0.85rem; font-weight:600;
                       margin:6px 0 0 0; opacity:0.8;">
-                {status_txt}
+                #{status_txt}
             </p>
         </div>
     """, unsafe_allow_html=True)  
