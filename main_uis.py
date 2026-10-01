@@ -357,6 +357,31 @@ if dict_cursos:
         unsafe_allow_html=True,
     )
 
+    st.markdown(f"""
+        <div style="
+            background-color:#161B22;
+            border: 1px solid {color_b};
+            border-radius:12px;
+            padding: 18px;
+            text-align:center;
+            box-shadow: 0 0 18px {color_b}40;
+            margin-top: 12px;">
+            <p style="color:#8b949e; font-size:0.85rem; font-weight:700;
+                      text-transform:uppercase; margin:0 0 6px 0;">
+                Nota Definitiva Actual
+            </p>
+            <p style="color:{color_b}; font-size:2.8rem; font-weight:800;
+                      margin:0; letter-spacing:2px;
+                      text-shadow: 0 0 12px {color_b}, 0 0 28px {color_b};">
+                {total:.2f}
+            </p>
+            <p style="color:{color_b}; font-size:0.85rem; font-weight:600;
+                      margin:6px 0 0 0; opacity:0.8;">
+                {status_txt}
+            </p>
+        </div>
+    """, unsafe_allow_html=True)  
+
     if total >= 3.0:
       import time
 
