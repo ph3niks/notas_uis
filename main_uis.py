@@ -40,7 +40,7 @@ PESOS = {
         "P1": 0.20,
         "P2": 0.20,
         "P3": 0.15,
-        "P4": 0.20,
+        #"P4": 0.20,
         "P4A": 0.15,   # P4-1 Parcial Virtual ALEKS
         "P4B": 0.10,   # P4-2 Parcial Escuela final
         "PQT": 0.00,
