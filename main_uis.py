@@ -614,7 +614,7 @@ if dict_cursos:
           " definitiva actual)"
       )
 
-        with t3:
+    with t3:
       st.subheader("🔮 ¿Qué necesito para aprobar?")
 
       # Con parcial dividido, lo "pendiente" es P4-2 (Escuela final)
