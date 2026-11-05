@@ -21,8 +21,7 @@ PESOS = {
         "P1": 0.15,
         "P2": 0.25,
         "P3": 0.20,
-        "P4A": 0.15,   # P4-1 Parcial Virtual ALEKS
-        "P4B": 0.10,   # P4-2 Parcial Escuela final
+        "P4": 0.20,
         "PQT": 0.10,
         "ALEKS": 0.00,
         "TUTOR": 0.10,
@@ -39,9 +38,11 @@ PESOS = {
     # Cálculo I (PE9): P1 (15%), P2 (20%), P3 (25%), P4 (20%), PQT (5%), ALEKS (10%), TUTOR (10%)
     "PED": {
         "P1": 0.20,
-        "P2": 0.15,
-        "P3": 0.25,
+        "P2": 0.20,
+        "P3": 0.15,
         "P4": 0.20,
+        "P4A": 0.15,   # P4-1 Parcial Virtual ALEKS
+        "P4B": 0.10,   # P4-2 Parcial Escuela final
         "PQT": 0.00,
         "ALEKS": 0.10,
         "TUTOR": 0.10,
