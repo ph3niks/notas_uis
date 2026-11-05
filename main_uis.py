@@ -21,7 +21,8 @@ PESOS = {
         "P1": 0.15,
         "P2": 0.25,
         "P3": 0.20,
-        "P4": 0.20,
+        "P4A": 0.15,   # P4-1 Parcial Virtual ALEKS
+        "P4B": 0.10,   # P4-2 Parcial Escuela final
         "PQT": 0.10,
         "ALEKS": 0.00,
         "TUTOR": 0.10,
@@ -309,13 +310,17 @@ if dict_cursos:
     pqt = obtener_pqt(row, todas_cols)
     aleks = obtener_columna_alternativa(row, ["ALEKS"])
     tutor = obtener_columna_alternativa(row, ["TUTOR", "TUTO", "TUTORIA"])
+    p4a = round_nota(row.get("P4-1"))
+    p4b = round_nota(row.get("P4-2"))
 
     # Nota total calculada dinámicamente con ponderación oficial
     total = round(
         p1 * pesos["P1"]
         + p2 * pesos["P2"]
         + p3 * pesos["P3"]
-        + p4 * pesos["P4"]
+        + p4 * pesos.get("P4", 0.0)
+        + p4a * pesos.get("P4A", 0.0)
+        + p4b * pesos.get("P4B", 0.0)
         + pqt * pesos["PQT"]
         + aleks * pesos.get("ALEKS", 0.0)
         + tutor * pesos.get("TUTOR", 0.0)
@@ -420,7 +425,10 @@ if dict_cursos:
           height=80,
       )
 
-    segundo_corte_cerrado = celda_tiene_valor(row, "P4") and p4 > 0
+    if pesos.get("P4A", 0) > 0:
+      segundo_corte_cerrado = celda_tiene_valor(row, "P4-1") and celda_tiene_valor(row, "P4-2")
+    else:
+      segundo_corte_cerrado = celda_tiene_valor(row, "P4") and p4 > 0
 
     if segundo_corte_cerrado:
       if total >= 3.0:
@@ -469,9 +477,15 @@ if dict_cursos:
           (f"Parcial 1 ({int(pesos['P1']*100)}%)", f"{p1:.1f}"),
           (f"Parcial 2 ({int(pesos['P2']*100)}%)", f"{p2:.1f}"),
           (f"Parcial 3 ({int(pesos['P3']*100)}%)", f"{p3:.1f}"),
-          (f"Parcial 4 ({int(pesos['P4']*100)}%)", f"{p4:.1f}"),
+          #(f"Parcial 4 ({int(pesos['P4']*100)}%)", f"{p4:.1f}"),
           *( [(f"Prom. PQT ({int(pesos['PQT']*100)}%)", f"{pqt:.1f}")] if pesos.get("PQT", 0) > 0 else [] ) ,
       ]
+      if pesos.get("P4", 0) > 0:
+        cards_principales.append((f"Parcial 4 ({round(pesos['P4']*100)}%)", f"{p4:.1f}"))
+      if pesos.get("P4A", 0) > 0:
+        cards_principales.append((f"P4-1 ALEKS ({round(pesos['P4A']*100)}%)", f"{p4a:.1f}"))
+      if pesos.get("P4B", 0) > 0:
+        cards_principales.append((f"P4-2 Escuela ({round(pesos['P4B']*100)}%)", f"{p4b:.1f}"))  
       if pesos.get("ALEKS", 0) > 0:
         cards_principales.append(
             (f"ALEKS ({int(pesos['ALEKS']*100)}%)", f"{aleks:.1f}")
@@ -574,9 +588,15 @@ if dict_cursos:
           f"Parcial 1 ({int(pesos['P1']*100)}%)": p1 * pesos["P1"],
           f"Parcial 2 ({int(pesos['P2']*100)}%)": p2 * pesos["P2"],
           f"Parcial 3 ({int(pesos['P3']*100)}%)": p3 * pesos["P3"],
-          f"Parcial 4 ({int(pesos['P4']*100)}%)": p4 * pesos["P4"],
+          #f"Parcial 4 ({int(pesos['P4']*100)}%)": p4 * pesos["P4"],
           **( {f"PQT ({int(pesos['PQT']*100)}%)": pqt * pesos["PQT"]} if pesos.get("PQT", 0) > 0 else {} ),
       }
+      if pesos.get("P4", 0) > 0:
+        componentes[f"Parcial 4 ({round(pesos['P4']*100)}%)"] = p4 * pesos["P4"]
+      if pesos.get("P4A", 0) > 0:
+        componentes[f"P4-1 ALEKS ({round(pesos['P4A']*100)}%)"] = p4a * pesos["P4A"]
+      if pesos.get("P4B", 0) > 0:
+        componentes[f"P4-2 Escuela ({round(pesos['P4B']*100)}%)"] = p4b * pesos["P4B"]  
       if pesos.get("ALEKS", 0) > 0:
         componentes[f"ALEKS ({int(pesos['ALEKS']*100)}%)"] = (
             aleks * pesos["ALEKS"]
@@ -594,116 +614,77 @@ if dict_cursos:
           " definitiva actual)"
       )
 
-    with t3:
+        with t3:
       st.subheader("🔮 ¿Qué necesito para aprobar?")
 
-      acum_fijo_sin_p4 = (
+      # Con parcial dividido, lo "pendiente" es P4-2 (Escuela final)
+      tiene_split = pesos.get("P4A", 0) > 0
+      peso_pend = pesos["P4B"] if tiene_split else pesos["P4"]
+      nombre_pend = "P4-2" if tiene_split else "P4"
+
+      acum_fijo = (
           p1 * pesos["P1"]
           + p2 * pesos["P2"]
           + p3 * pesos["P3"]
-          + pqt * pesos["PQT"]
+          + pqt * pesos.get("PQT", 0.0)
           + aleks * pesos.get("ALEKS", 0.0)
           + tutor * pesos.get("TUTOR", 0.0)
+          + p4a * pesos.get("P4A", 0.0)
       )
-      p4_necesario = (3.0 - acum_fijo_sin_p4) / pesos["P4"]
+      necesario = (3.0 - acum_fijo) / peso_pend
 
       st.markdown("##### Estado actual con componentes registrados:")
-      if celda_tiene_valor(row, "P4") and p4 > 0:
-        st.info(
-            f"Ya tienes P4 registrado: **{p4:.1f}**. Tu nota final es"
-            f" **{total:.2f}**."
-        )
-      elif p4_necesario <= 0:
-        st.success("¡Ya aprobaste sin necesitar P4! 🎉")
-      elif p4_necesario > 5.0:
-        st.error(
-            f"Con el acumulado actual, necesitarías **{p4_necesario:.2f}** en"
-            " P4 para llegar a 3.0."
-        )
+      if segundo_corte_cerrado:
+        st.info(f"Ya tienes el Parcial 4 completo. Tu nota final es **{total:.2f}**.")
+      elif necesario <= 0:
+        st.success(f"¡Ya aprobaste sin necesitar {nombre_pend}! 🎉")
+      elif necesario > 5.0:
+        st.error(f"Con el acumulado actual, necesitarías **{necesario:.2f}** en {nombre_pend} para llegar a 3.0.")
         st.warning("Usa los controles de abajo para simular mejores notas. 👇")
       else:
-        st.warning(
-            f"Necesitas mínimo **{p4_necesario:.2f} / 5.0** en P4 para"
-            " aprobar."
-        )
+        st.warning(f"Necesitas mínimo **{necesario:.2f} / 5.0** en {nombre_pend} para aprobar.")
 
       st.divider()
       st.markdown("##### 🎛️ Simula tus escenarios")
 
-      num_sim_cols = (
-          1                                                          # P4 siempre
-          + (1 if pesos.get("PQT",   0) > 0 else 0)                # PQT opcional
-          + (1 if pesos.get("ALEKS", 0) > 0 else 0)                # ALEKS opcional
-          + (1 if pesos.get("TUTOR", 0) > 0 else 0)                # TUTOR opcional
-      )
-      cols_sim = st.columns(num_sim_cols)
-
-      with cols_sim[0]:
-        p4_sim = st.slider(
-            "Nota esperada P4",
-            0.0,
-            5.0,
-            value=float(p4)
-            if (celda_tiene_valor(row, "P4") and p4 > 0)
-            else 3.0,
-            step=0.1,
-            key="slider_p4",
-        )
+      # Los sliders se arman desde una lista: el nº de columnas siempre coincide
+      sliders = []
+      if tiene_split:
+        sliders.append(("p4a", "Nota esperada P4-1 (ALEKS)",
+                        float(p4a) if celda_tiene_valor(row, "P4-1") else 3.0))
+        sliders.append(("p4b", "Nota esperada P4-2 (Escuela)",
+                        float(p4b) if celda_tiene_valor(row, "P4-2") else 3.0))
+      else:
+        sliders.append(("p4", "Nota esperada P4",
+                        float(p4) if (celda_tiene_valor(row, "P4") and p4 > 0) else 3.0))
       if pesos.get("PQT", 0) > 0:
-        with cols_sim[1]:
-          pqt_sim = st.slider(
-              "Promedio PQT proyectado",
-              0.0, 5.0,
-              value=float(pqt),
-              step=0.1,
-              key="slider_pqt",
-          )
-      else:
-        pqt_sim = 0.0
-
-      curr_col = 1 + (1 if pesos.get("PQT", 0) > 0 else 0)
+        sliders.append(("pqt", "Promedio PQT proyectado", float(pqt)))
       if pesos.get("ALEKS", 0) > 0:
-        with cols_sim[curr_col]:
-          aleks_sim = st.slider(
-              "Nota ALEKS proyectada",
-              0.0,
-              5.0,
-              value=float(aleks),
-              step=0.1,
-              key="slider_aleks",
-          )
-        curr_col += 1
-      else:
-        aleks_sim = 0.0
-
+        sliders.append(("aleks", "Nota ALEKS proyectada", float(aleks)))
       if pesos.get("TUTOR", 0) > 0:
-        with cols_sim[curr_col]:
-          tutor_sim = st.slider(
-              "Nota TUTOR proyectada",
-              0.0,
-              5.0,
-              value=float(tutor),
-              step=0.1,
-              key="slider_tutor",
-          )
-      else:
-        tutor_sim = 0.0
+        sliders.append(("tutor", "Nota TUTOR proyectada", float(tutor)))
+
+      sim = {"p4": 0.0, "p4a": 0.0, "p4b": 0.0, "pqt": 0.0, "aleks": 0.0, "tutor": 0.0}
+      for col, (clave, etiqueta, inicial) in zip(st.columns(len(sliders)), sliders):
+        with col:
+          sim[clave] = st.slider(etiqueta, 0.0, 5.0, value=inicial, step=0.1, key=f"slider_{clave}")
 
       total_sim = round(
           p1 * pesos["P1"]
           + p2 * pesos["P2"]
           + p3 * pesos["P3"]
-          + p4_sim * pesos["P4"]
-          + pqt_sim * pesos["PQT"]
-          + aleks_sim * pesos.get("ALEKS", 0.0)
-          + tutor_sim * pesos.get("TUTOR", 0.0)
+          + sim["p4"] * pesos.get("P4", 0.0)
+          + sim["p4a"] * pesos.get("P4A", 0.0)
+          + sim["p4b"] * pesos.get("P4B", 0.0)
+          + sim["pqt"] * pesos.get("PQT", 0.0)
+          + sim["aleks"] * pesos.get("ALEKS", 0.0)
+          + sim["tutor"] * pesos.get("TUTOR", 0.0)
           + 0.0000001,
           2,
       )
 
       color_sim = (
-          "#00FF41"
-          if total_sim >= 3.0
+          "#00FF41" if total_sim >= 3.0
           else ("#F7B707" if total_sim >= 2.5 else "#FF3131")
       )
       st.markdown(
