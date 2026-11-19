@@ -328,11 +328,20 @@ if dict_cursos:
         + 0.0000001,
         2,
     )
+    
+    # Curso cerrado: Cálculo I (P4-2 dividido) cierra con P4-2; los demás con P4
+    if pesos.get("P4B", 0) > 0:
+      segundo_corte_cerrado = celda_tiene_valor(row, "P4-2")
+    else:
+      segundo_corte_cerrado = celda_tiene_valor(row, "P4")
 
     # Semáforo
     if total >= 3.0:
       color_b = "#00FF41"
       status_txt = "¡FELICITACIONES, HAS APROBADO LA MATERIA! 🎉"
+    elif segundo_corte_cerrado:
+      color_b = "#FF3131"
+      status_txt = "Lo siento 😔: has perdido la materia"
     elif total >= 2.5:
       color_b = "#F7B707"
       status_txt = "ADVERTENCIA ⚠️: No bajes la guardia, estás cerca"
