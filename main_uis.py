@@ -329,7 +329,7 @@ if dict_cursos:
         2,
     )
     
-    # Curso cerrado: Cálculo I (P4-2 dividido) cierra con P4-2; los demás con P4
+        # Curso cerrado: Cálculo I (P4-2 dividido) cierra con P4-2; los demás con P4
     if pesos.get("P4B", 0) > 0:
       segundo_corte_cerrado = celda_tiene_valor(row, "P4-2")
     else:
@@ -352,6 +352,7 @@ if dict_cursos:
       color_b = "#FF3131"
       status_txt = "SITUACIÓN CRÍTICA 😵: Habla con tu profesor"
 
+    # Barra de progreso
     st.markdown(
         f"""
             <div style="margin-bottom:5px; display:flex; justify-content:space-between; align-items:flex-end;">
@@ -372,28 +373,27 @@ if dict_cursos:
         unsafe_allow_html=True,
     )
 
-    st.markdown(f"""
-        <div style="
-            background-color:#161B22;
-            border: 1px solid {color_b};
-            border-radius:12px;
-            padding: 18px;
-            text-align:center;
-            box-shadow: 0 0 18px {color_b}40;
-            margin-top: 12px;">
-            <p style="color:#8b949e; font-size:0.85rem; font-weight:700;
-                      text-transform:uppercase; margin:0 0 6px 0;">
-                Nota Definitiva Actual
-            </p>
-            <p style="color:{color_b}; font-size:2.8rem; font-weight:800;
-                      margin:0; letter-spacing:2px;
-                      text-shadow: 0 0 12px {color_b}, 0 0 28px {color_b};">
-                {total:.2f}
-            </p>
-            
-        </div>
-    """, unsafe_allow_html=True)  
+    # Tarjeta de nota definitiva (siempre visible, color según semáforo)
+    st.markdown(
+        f"""
+            <div style="margin:20px 0; padding:24px; background-color:#161B22;
+                        border:2px solid {color_b}; border-radius:16px; text-align:center;
+                        box-shadow:0 0 20px {color_b}44;">
+                <div style="color:#8b949e; font-size:0.95rem; font-weight:bold;
+                            text-transform:uppercase; margin-bottom:6px;">
+                    NOTA DEFINITIVA
+                </div>
+                <div style="color:{color_b}; font-size:3.5rem; font-weight:bold; line-height:1.1;
+                            text-shadow:0 0 12px {color_b}, 0 0 28px {color_b};">
+                    {total:.2f}
+                    <span style="color:#8b949e; font-size:1.2rem; text-shadow:none;"> / 5.0</span>
+                </div>
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
+    # Confeti
     if total >= 3.0:
       import time
 
@@ -434,44 +434,6 @@ if dict_cursos:
             """,
           height=80,
       )
-
-    if pesos.get("P4A", 0) > 0:
-      segundo_corte_cerrado = celda_tiene_valor(row, "P4-1") and celda_tiene_valor(row, "P4-2")
-    else:
-      segundo_corte_cerrado = celda_tiene_valor(row, "P4") and p4 > 0
-
-    if segundo_corte_cerrado:
-      if total >= 3.0:
-        color_final = "#00FF41"
-        mensaje_final = "🎉 ¡Felicitaciones! Aprobaste la materia."
-      else:
-        color_final = "#FF3131"
-        mensaje_final = (
-            "😔 Lo siento, no pasaste. Debes habilitar la materia."
-        )
-
-      st.markdown(
-          f"""
-                <div style="margin:20px 0; padding:24px; background-color:#161B22;
-                            border:2px solid {color_final}; border-radius:16px; text-align:center;
-                            box-shadow:0 0 20px {color_final}44;">
-                    <div style="color:#8b949e; font-size:0.95rem; font-weight:bold;
-                                text-transform:uppercase; margin-bottom:6px;">
-                        NOTA DEFINITIVA FINAL
-                    </div>
-                    <div style="color:{color_final}; font-size:3.5rem; font-weight:bold; line-height:1.1;">
-                        {total:.2f}
-                        <span style="color:#8b949e; font-size:1.2rem;"> / 5.0</span>
-                    </div>
-                    <div style="color:{color_final}; font-size:1.2rem; font-weight:bold; margin-top:10px;">
-                        {mensaje_final}
-                    </div>
-                </div>
-            """,
-          unsafe_allow_html=True,
-      )
-    else:
-      st.write(f"Nota definitiva actual: **{total:.2f}** / 5.0")
 
     st.divider()
 
